@@ -1,6 +1,6 @@
 db:
   host: localhost
   port: 3306
-  name: MBRDI1
+  name: chargingStations
   username: root
   password: Vamsi@2001

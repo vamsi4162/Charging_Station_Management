@@ -1,0 +1,8 @@
+2023/06/16 22:21:37.417813 AddChargingStation: Charging station added successfully
+2023/06/16 22:22:02.906988 calculateAvailabilityTime: Availability time calculated. Charging start time: 2023-06-16 22:22:02.906953 +0530 IST, Availability time: 2023-06-17 02:22:02.906953 +0530 IST
+2023/06/16 22:22:02.913382 StartCharging: Charging started successfully. Charging start time: 2023-06-16 22:22:02.906953 +0530 IST, Station availability time: 2023-06-17 02:22:02.906953 +0530 IST
+2023/06/16 22:22:09.816620 GetOccupiedChargingStations: Retrieved occupied charging stations
+2023/06/16 22:22:16.554055 GetAvailableChargingStations: Retrieved available charging stations
+2023/06/16 22:24:51.660665 AddChargingStation:Invalid request payload 
+2023/06/16 22:48:11.009771 AddChargingStation: Invalid request payload
+2023/06/16 22:49:06.546316 AddChargingStation: Charging station already exists for station ID: 6

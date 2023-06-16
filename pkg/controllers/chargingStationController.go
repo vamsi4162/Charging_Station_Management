@@ -3,7 +3,9 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/vamsi4162/Charging_Station_Management/pkg/database"
@@ -14,10 +16,23 @@ import (
 	"github.com/guregu/null"
 )
 
+var logger *log.Logger
+
+func init() {
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal("Failed to open log file:", err)
+	}
+
+	logger = log.New(file, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+}
+
 func AddChargingStation(c *gin.Context) {
 	var payload models.ChargingStation
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		errorMessage := "Invalid request payload"
+		c.JSON(http.StatusBadRequest, gin.H{"error": errorMessage})
+		logger.Printf("AddChargingStation: %s\n", errorMessage)
 		return
 	}
 
@@ -25,6 +40,7 @@ func AddChargingStation(c *gin.Context) {
 	result := database.DB.First(&existingStation, "station_id = ?", payload.StationID)
 	if result.RowsAffected > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Charging station already exists"})
+		logger.Printf("AddChargingStation: Charging station already exists for station ID: %d\n", payload.StationID)
 		return
 	}
 
@@ -38,10 +54,12 @@ func AddChargingStation(c *gin.Context) {
 	result = database.DB.Create(&chargingStation)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add the charging station"})
+		logger.Println("AddChargingStation: Failed to add the charging station")
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Charging station added successfully"})
+	logger.Println("AddChargingStation: Charging station added successfully")
 }
 
 func StartCharging(c *gin.Context) {
@@ -51,7 +69,9 @@ func StartCharging(c *gin.Context) {
 		CurrentVehicleCharge   string `json:"currentVehicleCharge"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		errorMessage := "Invalid request payload"
+		c.JSON(http.StatusBadRequest, gin.H{"error": errorMessage})
+		logger.Printf("StartCharging: %s\n", errorMessage)
 		return
 	}
 
@@ -59,11 +79,13 @@ func StartCharging(c *gin.Context) {
 	result := database.DB.First(&station, "station_id = ?", payload.StationID)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Charging station not found"})
+		logger.Printf("StartCharging: Charging station not found for station ID: %d\n", payload.StationID)
 		return
 	}
 
 	if station.Occupied {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Charging station is already occupied"})
+		logger.Printf("StartCharging: Charging station is already occupied for station ID: %d\n", payload.StationID)
 		return
 	}
 
@@ -72,6 +94,7 @@ func StartCharging(c *gin.Context) {
 	availabilityTime, err := calculateAvailabilityTime(payload.VehicleBatteryCapacity, payload.CurrentVehicleCharge, chargingStartTime, station.EnergyOutput)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to calculate availability time"})
+		logger.Printf("StartCharging: Failed to calculate availability time. Error: %s\n", err.Error())
 		return
 	}
 
@@ -86,6 +109,7 @@ func StartCharging(c *gin.Context) {
 	result = database.DB.Create(&occupiedStation)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start charging"})
+		logger.Println("StartCharging: Failed to start charging")
 		return
 	}
 
@@ -95,10 +119,12 @@ func StartCharging(c *gin.Context) {
 	})
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update the charging station status"})
+		logger.Println("StartCharging: Failed to update the charging station status")
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Charging started successfully", "chargingStartTime": chargingStartTime, "stationAvailabilityTime": availabilityTime})
+	logger.Printf("StartCharging: Charging started successfully. Charging start time: %s, Station availability time: %s\n", chargingStartTime, availabilityTime)
 }
 
 func GetAvailableChargingStations(c *gin.Context) {
@@ -116,6 +142,7 @@ func GetAvailableChargingStations(c *gin.Context) {
 	result := database.DB.Find(&stations, "occupied = ?", false)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve available charging stations"})
+		logger.Println("GetAvailableChargingStations: Failed to retrieve available charging stations")
 		return
 	}
 
@@ -124,6 +151,7 @@ func GetAvailableChargingStations(c *gin.Context) {
 	fmt.Println("Retrieved available charging stations from the database")
 
 	c.JSON(http.StatusOK, gin.H{"stations": stations, "source": "database"})
+	logger.Println("GetAvailableChargingStations: Retrieved available charging stations")
 }
 
 func GetOccupiedChargingStations(c *gin.Context) {
@@ -141,6 +169,7 @@ func GetOccupiedChargingStations(c *gin.Context) {
 	result := database.DB.Find(&occupiedStations)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve occupied charging stations"})
+		logger.Println("GetOccupiedChargingStations: Failed to retrieve occupied charging stations")
 		return
 	}
 
@@ -149,8 +178,8 @@ func GetOccupiedChargingStations(c *gin.Context) {
 	fmt.Println("Retrieved occupied charging stations from the database")
 
 	c.JSON(http.StatusOK, gin.H{"stations": occupiedStations, "source": "database"})
+	logger.Println("GetOccupiedChargingStations: Retrieved occupied charging stations")
 }
-
 
 func calculateAvailabilityTime(vehicleBatteryCapacity, currentVehicleCharge string, chargingStartTime time.Time, energyOutput string) (time.Time, error) {
 	batteryCap, err := parseEnergyValue(vehicleBatteryCapacity)
@@ -180,9 +209,12 @@ func calculateAvailabilityTime(vehicleBatteryCapacity, currentVehicleCharge stri
 	chargingDuration := time.Duration(remainingEnergy / energyOut * float64(time.Hour))
 	availabilityTime := chargingStartTime.Add(chargingDuration)
 
+	logger.Printf("calculateAvailabilityTime: Availability time calculated. Charging start time: %s, Availability time: %s\n", chargingStartTime, availabilityTime)
+
 	return availabilityTime, nil
 }
 
+// we can use Atoi in strconv package instead of creating new parseEnergyValue function.
 func parseEnergyValue(value string) (float64, error) {
 	var quantity float64
 	unit := "kWh"

@@ -1,0 +1,6 @@
+db:
+  host: localhost
+  port: 3306
+  name: MBRDI1
+  username: root
+  password: Vamsi@2001
